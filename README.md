@@ -1,16 +1,72 @@
-# my_app
+# EVENTS ORGANISATION APP
+![Flutter](https://img.shields.io/badge/Flutter-3.13-blue)
+![Dart](https://img.shields.io/badge/Dart-3.1-blueviolet)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-yellow)
+![Riverpod](https://img.shields.io/badge/Riverpod-StateManagement-orange)
 
-A new Flutter project.
+## 📌 О проекте
 
-## Getting Started
+Мобильное приложение на **Flutter** для организации корпоративных мероприятий.  
+Позволяет регистрироваться, создавать мероприятия, присоединяться к ним, оставлять отзывы и просматривать аналитику.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 Функционал
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Регистрация и вход пользователей через Supabase.
+- Создание и редактирование мероприятий (дата, время, описание, адрес, изображение).
+- Присоединение к мероприятиям по логину и паролю.
+- Просмотр списка мероприятий, в которых пользователь участвует.
+- Управление профилем пользователя.
+- Проверка участников через QR-код.
+- Отзывы о мероприятиях и аналитика (графики, средняя оценка, количество участников).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 🛠 Технологический стек
+
+- **Язык:** Dart
+- **Фреймворк:** Flutter
+- **Бэкенд:** Supabase (PostgreSQL, аутентификация)
+- **Платформы:** Android, iOS, Web, Windows, Linux, macOS
+- **Управление состоянием:** Riverpod
+- **Тестирование:** Unit, Widget, интеграционные тесты
+- **Push-уведомления:** OneSignal
+- **CI/CD:** Codemagic
+
+---
+
+
+---
+
+## ⚙ Установка и запуск
+
+1. Установить Flutter SDK: [Flutter Installation](https://flutter.dev/docs/get-started/install)
+2. Клонировать репозиторий:
+
+```bash
+git clone https://github.com/suxds-repo/events_org_app.git
+```
+Установить зависимости:
+
+```bash
+flutter pub get
+```
+Запустить приложение на эмуляторе или устройстве:
+
+```bash
+flutter run
+```
+
+🧪 Тестирование
+Запуск unit и widget тестов:
+
+```bash
+flutter test
+```
+Интеграционные тесты:
+
+```bash
+
+flutter test integration_test/
+```
