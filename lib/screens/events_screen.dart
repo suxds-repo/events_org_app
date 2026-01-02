@@ -13,7 +13,9 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> {
   final supabase = Supabase.instance.client;
   List<dynamic> events = [];
+  List<dynamic> filteredEvents = [];
   Set<String> joinedEventIds = {};
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -28,9 +30,9 @@ class _EventsScreenState extends State<EventsScreen> {
         .select('*, participants:participants(event_id)')
         .order('date');
 
-    // response — список событий с массивом участников для каждого
     setState(() {
       events = response;
+      _applySearch();
     });
   }
 
@@ -53,18 +55,42 @@ class _EventsScreenState extends State<EventsScreen> {
     });
   }
 
+  void _applySearch() {
+    setState(() {
+      filteredEvents =
+          events.where((event) {
+            final title = event['title']?.toString().toLowerCase() ?? '';
+            return title.contains(searchQuery.toLowerCase());
+          }).toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Мероприятия')),
+      appBar: AppBar(
+        title: TextField(
+          decoration: InputDecoration(
+            hintText: 'Поиск мероприятий...',
+            border: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.white70),
+          ),
+          style: TextStyle(color: Colors.white),
+          onChanged: (value) {
+            searchQuery = value;
+            _applySearch();
+          },
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
       body:
-          events.isEmpty
-              ? Center(child: CircularProgressIndicator())
+          filteredEvents.isEmpty
+              ? Center(child: Text('Мероприятий не найдено'))
               : ListView.builder(
                 padding: EdgeInsets.all(12),
-                itemCount: events.length,
+                itemCount: filteredEvents.length,
                 itemBuilder: (context, index) {
-                  final event = events[index];
+                  final event = filteredEvents[index];
                   final eventId = event['id'] as String;
                   final isJoined = joinedEventIds.contains(eventId);
 
@@ -77,7 +103,7 @@ class _EventsScreenState extends State<EventsScreen> {
                         MaterialPageRoute(
                           builder: (_) => EventDetailsScreen(event: event),
                         ),
-                      ).then((_) => _loadEvents()); // обновим список, если надо
+                      ).then((_) => _loadEvents());
                     },
                     trailing: Icon(
                       Icons.arrow_forward_ios,

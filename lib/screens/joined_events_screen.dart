@@ -12,6 +12,8 @@ class JoinedEventsScreen extends StatefulWidget {
 class _JoinedEventsScreenState extends State<JoinedEventsScreen> {
   final supabase = Supabase.instance.client;
   List<dynamic> joinedEvents = [];
+  List<dynamic> filteredEvents = [];
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -23,19 +25,30 @@ class _JoinedEventsScreenState extends State<JoinedEventsScreen> {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
-    // Запрашиваем свои записи с полными данными событий и их участниками
     final response = await supabase
         .from('participants')
         .select('event_id, events(*, participants(event_id))')
         .eq('user_id', user.id);
 
+    final loadedEvents =
+        response.map((e) {
+          final event = e['events'];
+          event['participants'] = event['participants'] ?? [];
+          return event;
+        }).toList();
+
     setState(() {
-      joinedEvents =
-          response.map((e) {
-            final event = e['events'];
-            // Убедимся, что participants — список участников события
-            event['participants'] = event['participants'] ?? [];
-            return event;
+      joinedEvents = loadedEvents;
+      _applySearch();
+    });
+  }
+
+  void _applySearch() {
+    setState(() {
+      filteredEvents =
+          joinedEvents.where((event) {
+            final title = event['title']?.toString().toLowerCase() ?? '';
+            return title.contains(searchQuery.toLowerCase());
           }).toList();
     });
   }
@@ -43,24 +56,37 @@ class _JoinedEventsScreenState extends State<JoinedEventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Мои мероприятия')),
+      appBar: AppBar(
+        title: TextField(
+          decoration: InputDecoration(
+            hintText: 'Поиск среди моих мероприятий...',
+            border: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.white70),
+          ),
+          style: TextStyle(color: Colors.white),
+          onChanged: (value) {
+            searchQuery = value;
+            _applySearch();
+          },
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
       body:
-          joinedEvents.isEmpty
+          filteredEvents.isEmpty
               ? Center(
                 child: Text(
-                  'Вы пока не записаны ни на одно мероприятие',
+                  'Мероприятий не найдено',
                   style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
                 ),
               )
               : ListView.builder(
                 padding: EdgeInsets.all(12),
-                itemCount: joinedEvents.length,
+                itemCount: filteredEvents.length,
                 itemBuilder: (context, index) {
-                  final event = joinedEvents[index];
+                  final event = filteredEvents[index];
                   return EventCard(
                     event: event,
-                    isJoined: true, // отмечаем, что пользователь записан
+                    isJoined: true,
                     onTap: () {
                       Navigator.push(
                         context,

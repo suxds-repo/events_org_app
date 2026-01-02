@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/screens/event_analytics_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'participants_screen.dart';
+import 'edit_event_screen.dart'; // добавлено
+import 'qr_scan_screen.dart';
+import 'event_feedback_screen.dart'; // импорт экрана отзывов
 
 class EventDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -113,12 +118,73 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final event = widget.event;
-    final joined = participants.any(
-      (p) => p['user_id'] == supabase.auth.currentUser?.id,
-    );
+    final currentUserId = supabase.auth.currentUser?.id;
+    final joined = participants.any((p) => p['user_id'] == currentUserId);
+    final isCreator = event['created_by'] == currentUserId;
+
+    // Проверяем, прошло ли время окончания мероприятия
+    final DateTime now = DateTime.now();
+    DateTime endDateTime;
+    try {
+      endDateTime = DateTime.parse('${event['date']}T${event['event_end']}');
+    } catch (_) {
+      endDateTime = DateTime.now().subtract(const Duration(days: 1));
+    }
+    final bool eventEnded = now.isAfter(endDateTime);
 
     return Scaffold(
-      appBar: AppBar(title: Text(event['title'])),
+      appBar: AppBar(
+        title: Text(event['title']),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.group),
+            tooltip: 'Список участников',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ParticipantsScreen(eventId: event['id']),
+                ),
+              );
+            },
+          ),
+          if (isCreator)
+            IconButton(
+              icon: Icon(Icons.edit),
+              tooltip: 'Редактировать',
+              onPressed: () async {
+                final updatedEvent = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditEventScreen(event: event),
+                  ),
+                );
+
+                if (updatedEvent != null) {
+                  setState(() {
+                    widget.event.addAll(updatedEvent);
+                  });
+                }
+              },
+            ),
+          if (isCreator)
+            ElevatedButton(
+              onPressed: () async {
+                final shouldRefresh = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => QrScanScreen(eventId: widget.event['id']),
+                  ),
+                );
+
+                if (shouldRefresh == true) {
+                  _loadParticipants(); // обновляем список участников
+                }
+              },
+              child: Text('QR-код'),
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -147,39 +213,35 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                 ),
                 child: Column(
                   children: [
-                    ListTile(
-                      leading: Icon(Icons.description),
-                      title: Text('Описание'),
-                      subtitle: Text(event['description'] ?? 'Нет описания'),
+                    _infoTile(
+                      Icons.description,
+                      'Описание',
+                      event['description'] ?? 'Нет описания',
                     ),
-                    ListTile(
-                      leading: Icon(Icons.location_on),
-                      title: Text('Адрес'),
-                      subtitle: Text(event['adress'] ?? 'Не указан'),
+                    _infoTile(
+                      Icons.location_on,
+                      'Адрес',
+                      event['adress'] ?? 'Не указан',
                     ),
-                    ListTile(
-                      leading: Icon(Icons.date_range),
-                      title: Text('Дата'),
-                      subtitle: Text(_formatDate(event['date'])),
+                    _infoTile(
+                      Icons.date_range,
+                      'Дата',
+                      _formatDate(event['date']),
                     ),
-                    ListTile(
-                      leading: Icon(Icons.access_time),
-                      title: Text('Время'),
-                      subtitle: Text(
-                        '${_formatTime(event['event_start'])} - ${_formatTime(event['event_end'])}',
-                      ),
+                    _infoTile(
+                      Icons.access_time,
+                      'Время',
+                      '${_formatTime(event['event_start'])} - ${_formatTime(event['event_end'])}',
                     ),
-                    ListTile(
-                      leading: Icon(Icons.group),
-                      title: Text('Участники'),
-                      subtitle: Text(
-                        '${participants.length} / ${event['max_users']}',
-                      ),
+                    _infoTile(
+                      Icons.group,
+                      'Участники',
+                      '${participants.length} / ${event['max_users']}',
                     ),
-                    ListTile(
-                      leading: Icon(Icons.info_outline),
-                      title: Text('Статус'),
-                      subtitle: Text(event['status']),
+                    _infoTile(
+                      Icons.info_outline,
+                      'Статус',
+                      event['status'] ?? '',
                     ),
                   ],
                 ),
@@ -187,23 +249,13 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             ),
             SizedBox(height: 20),
             if (!joined) ...[
-              TextField(
-                controller: _loginController,
-                decoration: InputDecoration(
-                  labelText: 'Логин',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
+              _inputField(_loginController, 'Логин', Icons.person),
               SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Пароль',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
+              _inputField(
+                _passwordController,
+                'Пароль',
+                Icons.lock,
+                obscure: true,
               ),
               SizedBox(height: 20),
               SizedBox(
@@ -236,7 +288,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -246,9 +297,70 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                 ),
               ),
             ],
+            if (joined && eventEnded) ...[
+              SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EventFeedbackScreen(eventId: event['id']),
+                    ),
+                  );
+
+                  if (result == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Отзыв успешно отправлен')),
+                    );
+                  }
+                },
+                icon: Icon(Icons.feedback_outlined),
+                label: Text('Оставить отзыв'),
+              ),
+            ],
+            if (joined && isCreator) ...[
+              ElevatedButton.icon(
+                icon: Icon(Icons.analytics),
+                label: Text('Аналитика'),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => EventAnalyticsScreen(eventId: event['id']),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _inputField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool obscure = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(icon),
+      ),
+    );
+  }
+
+  Widget _infoTile(IconData icon, String title, String subtitle) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(subtitle),
     );
   }
 
@@ -266,8 +378,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   String _formatDate(String dateStr) {
     try {
       final date = DateTime.parse(dateStr);
-      return '${date.day.toString().padLeft(2, '0')}.'
-          '${date.month.toString().padLeft(2, '0')}.'
+      return '${date.day.toString().padLeft(2, '0')}.' +
+          '${date.month.toString().padLeft(2, '0')}.' +
           '${date.year}';
     } catch (_) {
       return dateStr;

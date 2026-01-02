@@ -16,13 +16,22 @@ dependencies:
   mime: ^1.0.4
   image_picker: ^1.0.4
   path: ^1.9.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.1
   cupertino_icons: ^1.0.8
+  path_provider: ^2.0.12
   supabase_flutter: ^2.8.4
+  intl: ^0.18.1
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  mockito: ^5.4.2
+  mocktail: ^1.0.2
+  build_runner: any
+  integration_test:
+    sdk: flutter
   flutter_lints: ^5.0.0
 
 
